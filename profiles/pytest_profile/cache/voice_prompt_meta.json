@@ -1,0 +1,5 @@
+{
+  "reference_audio_path": "/tmp/pytest-of-scar/pytest-2/test_clone_voice_creates_cache0/ref_audio.wav",
+  "audio_sha256": "2976da01e205a110c9fa41d47659e238a5c6d3c3f3137582f2949853faa201dd",
+  "ref_text": "hello test"
+}
