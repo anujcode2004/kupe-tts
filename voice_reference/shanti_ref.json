@@ -1,0 +1,16 @@
+{
+  "name": "shanti",
+  "ref_text": "તો ત્યાંથી ફેક્ટરી લઈ અને અરબી મેં લગાવી બધાય કહેતા હતા કે આ માણસ",
+  "ref_audio": "shanti_ref.wav",
+  "language": "gu",
+  "embedding_path": "shanti_embedding.npz",
+  "embedding_meta": {
+    "model_id": "k2-fsa/OmniVoice",
+    "sampling_rate": 24000,
+    "num_codebooks": 8,
+    "num_tokens": 115,
+    "ref_rms": 0.11397,
+    "built_at": "2026-05-07T11:13:41.315466+00:00"
+  },
+  "created_at": "2026-05-04T10:39:45.202057+00:00"
+}
