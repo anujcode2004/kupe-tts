@@ -1,0 +1,16 @@
+{
+  "name": "ajay",
+  "ref_text": "हनुमान, जब तुम्हें भूख लगी थी तो तुमने आकाश में चमकते हुए सूर्य को मीठा फल समझ लिया था। तुम उड़े थे और तुमने सूर्य को अपने मुख में रख लिया था।",
+  "ref_audio": "ajay_ref.mp3",
+  "language": "hi",
+  "embedding_path": "ajay_embedding.npz",
+  "embedding_meta": {
+    "model_id": "k2-fsa/OmniVoice",
+    "sampling_rate": 24000,
+    "num_codebooks": 8,
+    "num_tokens": 274,
+    "ref_rms": 0.085069,
+    "built_at": "2026-05-07T10:33:15.991569+00:00"
+  },
+  "created_at": "2026-05-04T10:39:45.202057+00:00"
+}
