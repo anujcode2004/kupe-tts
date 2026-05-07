@@ -55,7 +55,7 @@ except ImportError as exc:  # pragma: no cover
 
 
 # ---------------------------------------------------------------------------
-# 500-word Gujarati corpus — authentic prose, proper full stops & punctuation.
+# 500-word Gujarati corpus — authentic prose, proper full stops & punctuation.hello
 # ---------------------------------------------------------------------------
 GUJARATI_TEXT = (
 
