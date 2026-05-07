@@ -1,8 +1,0 @@
-vllm-omni
-gradio
-numpy
-transformers>=4.51
-soundfile
-fastapi
-uvicorn
-vllm

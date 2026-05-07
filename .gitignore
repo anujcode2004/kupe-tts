@@ -7,6 +7,7 @@ dist/
 build/
 .venv/
 .env
+initial-branch=main/
 .DS_Store
 .pytest_cache/
 .mypy_cache/
@@ -28,4 +29,3 @@ examples/exp*
 .claude/
 *.wav
 *.jsonl
-initial-branch=main/

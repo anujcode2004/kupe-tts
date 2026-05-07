@@ -152,6 +152,19 @@ MAX_BATCH_SIZE:   int   = max(1, int(os.getenv("OMNIVOICE_MAX_BATCH_SIZE",      
 BATCH_TIMEOUT_MS: float = max(0.0, float(os.getenv("OMNIVOICE_BATCH_TIMEOUT_MS", "50")))
 MAX_CONCURRENT:   int   = max(1, int(os.getenv("OMNIVOICE_MAX_CONCURRENT",        "16")))
 
+# First-chunk priority batching — collection window for batching concurrent
+# first-chunk requests together.  Short enough to not hurt single-stream FCL,
+# long enough to catch burst arrivals from concurrent WebSocket connections.
+FC_BATCH_TIMEOUT_MS: float = max(0.0, float(
+    os.getenv("OMNIVOICE_FC_BATCH_TIMEOUT_MS", "30")
+))
+
+# Maximum items in a single REST-chunk GPU dispatch.  Keeping this at 1 means
+# the scheduler checks for priority FC items between EVERY rest-chunk call,
+# minimising worst-case FC wait.  Increase for better throughput at the cost
+# of higher maximum FCL under concurrent load.
+MAX_REST_BATCH: int = max(1, int(os.getenv("OMNIVOICE_MAX_REST_BATCH", "1")))
+
 # ---------------------------------------------------------------------------
 # Attention / performance
 # ---------------------------------------------------------------------------
@@ -174,6 +187,11 @@ CROSSFADE_MS: int = max(0, int(os.getenv("OMNIVOICE_CROSSFADE_MS", "80")))
 FIRST_CHUNK_STEPS:    int   = max(1, int(os.getenv("OMNIVOICE_FIRST_CHUNK_STEPS", "4")))
 FIRST_CHUNK_GUIDANCE: float = float(os.getenv("OMNIVOICE_FIRST_CHUNK_GUIDANCE", "1.0"))
 
+# Rest-chunk (mid + last) diffusion steps.  Lower → faster GPU calls → lower
+# max FC latency when the GPU is busy with a rest-chunk.  Quality impact is
+# typically small for 6-8 steps.  Previous default was 16.
+REST_CHUNK_STEPS: int = max(1, int(os.getenv("OMNIVOICE_REST_CHUNK_STEPS", "8")))
+
 # ---------------------------------------------------------------------------
 # Generation config dicts (plain dicts for safe pickling across processes)
 # ---------------------------------------------------------------------------
@@ -189,7 +207,7 @@ FIRST_CHUNK_CFG: dict = dict(
 )
 
 MID_CHUNK_CFG: dict = dict(
-    num_step=16,
+    num_step=REST_CHUNK_STEPS,
     guidance_scale=1.5,
     t_shift=0.1,
     denoise=True,
@@ -200,7 +218,7 @@ MID_CHUNK_CFG: dict = dict(
 )
 
 LAST_CHUNK_CFG: dict = dict(
-    num_step=16,
+    num_step=REST_CHUNK_STEPS,
     guidance_scale=2.0,
     t_shift=0.1,
     denoise=True,

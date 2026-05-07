@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OmniVoice — Concurrent Stream Tester</title>
+<style>
+  :root {
+    --bg:        #0d1017;
+    --panel:     #161b24;
+    --panel-2:   #0e131c;
+    --border:    #232a36;
+    --text:      #e6e8eb;
+    --muted:     #8a93a3;
+    --accent:    #4ade80;
+    --warn:      #fbbf24;
+    --error:     #f87171;
+    --hi:        #38bdf8;
+    --pri:       #a78bfa;
+    --pink:      #f472b6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .container { max-width: 1500px; margin: 0 auto; padding: 22px 28px 60px; }
+  h1 { margin: 0 0 4px 0; font-size: 22px; letter-spacing: -0.01em; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+  }
+  .panel h2 {
+    margin: 0 0 14px 0;
+    font-size: 11px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .form-grid input,
+  .form-grid select,
+  .form-grid textarea {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 11px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: inherit;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+  }
+  .form-grid input:focus,
+  .form-grid select:focus,
+  .form-grid textarea:focus {
+    outline: 0;
+    border-color: var(--hi);
+    box-shadow: 0 0 0 2px rgba(56,189,248,0.15);
+  }
+  .text-row {
+    grid-column: 1 / -1;
+  }
+  .text-row textarea {
+    width: 100%;
+    min-height: 160px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    resize: vertical;
+  }
+  .button-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  button {
+    background: var(--accent);
+    color: #001b08;
+    border: 0;
+    padding: 9px 16px;
+    border-radius: 7px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    transition: opacity 0.15s, transform 0.05s;
+  }
+  button:active { transform: translateY(1px); }
+  button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-weight: 500;
+  }
+  button.danger { background: var(--error); color: #220003; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .status-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .status-bar .label { color: var(--muted); }
+  .status-bar .value { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge.idle      { background: rgba(139,146,160,0.18); color: var(--muted); }
+  .badge.streaming { background: rgba(56,189,248,0.18); color: var(--hi); }
+  .badge.done      { background: rgba(74,222,128,0.20); color: var(--accent); }
+  .badge.error     { background: rgba(248,113,113,0.20); color: var(--error); }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel-2);
+  }
+  table.metrics {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  table.metrics th, table.metrics td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  table.metrics tbody tr:last-child td,
+  table.metrics tbody tr:last-child th { border-bottom: 0; }
+  table.metrics th.metric-label {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 500;
+    width: 240px;
+    position: sticky;
+    left: 0;
+    background: var(--panel-2);
+    z-index: 1;
+  }
+  table.metrics thead th {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  table.metrics thead th.col-stream { color: var(--hi); }
+  table.metrics thead th.col-stream.is-playing {
+    color: var(--accent);
+  }
+  table.metrics thead th.col-stream.is-playing::after {
+    content: " ♪";
+    color: var(--accent);
+  }
+  table.metrics td.value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--text);
+  }
+  table.metrics td.value.pending { color: var(--muted); }
+  table.metrics td.value.flash {
+    background: rgba(56,189,248,0.15);
+    transition: background 0.6s;
+  }
+  table.metrics tr.row-status td .tag {
+    padding: 2px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: inline-block;
+  }
+  table.metrics tr.row-status td .tag.idle      { background: rgba(139,146,160,0.18); color: var(--muted); }
+  table.metrics tr.row-status td .tag.streaming { background: rgba(56,189,248,0.20); color: var(--hi); }
+  table.metrics tr.row-status td .tag.done      { background: rgba(74,222,128,0.20); color: var(--accent); }
+  table.metrics tr.row-status td .tag.error     { background: rgba(248,113,113,0.20); color: var(--error); }
+
+  .audio-card {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .audio-card .dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .audio-card.playing .dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(74,222,128,0.6);
+    animation: pulse 1.4s infinite;
+  }
+  .audio-card.playing strong { color: var(--accent); }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0.6); }
+    70%  { box-shadow: 0 0 0 12px rgba(74,222,128,0); }
+    100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+  }
+
+  .log {
+    height: 280px;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    line-height: 1.55;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .log .line { white-space: pre; }
+  .log .ts   { color: var(--muted); }
+  .log .s1   { color: var(--hi); }
+  .log .s2   { color: var(--accent); }
+  .log .s3   { color: var(--pri); }
+  .log .s4   { color: var(--pink); }
+  .log .s5   { color: var(--warn); }
+  .log .s6   { color: #94a3b8; }
+  .log .s7   { color: #fb923c; }
+  .log .s8   { color: #2dd4bf; }
+  .log .err  { color: var(--error); }
+  .log .ok   { color: var(--accent); }
+  .log .send { color: var(--muted); }
+
+  .hint {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 10px;
+  }
+  .hint code {
+    background: var(--panel-2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11.5px;
+  }
+
+  /* small-screen polish */
+  @media (max-width: 640px) {
+    .container { padding: 14px; }
+    h1 { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>OmniVoice — Concurrent Stream Tester</h1>
+  <p class="subtitle">
+    Fires <strong>N</strong> WebSocket streams (optionally staggered by a
+    fixed delay) all sending the same text. Each stream's first-chunk
+    latency, server gen time, and audio metrics are shown live in the
+    table. Audio plays from the stream you pick. Chunking happens entirely
+    server-side; the server fires all chunks into the batcher at t=0 so
+    later chunks generate in the background while the client plays the
+    earlier ones — no "wait for previous chunk to finish" gaps.
+  </p>
+
+  <!-- ============================================================== -->
+  <!-- CONFIGURATION                                                  -->
+  <!-- ============================================================== -->
+  <div class="panel">
+    <h2>Configuration</h2>
+    <div class="form-grid">
+      <label>Server URL
+        <input id="url" value="ws://localhost:8000/ws/tts" />
+      </label>
+      <label>Voice
+        <input id="voice" value="shanti" placeholder="ajay / shanti / soham …" />
+      </label>
+      <label>Language
+        <select id="language">
+          <option value="auto" selected>auto (let model detect)</option>
+          <option value="en">en — English</option>
+          <option value="hi">hi — Hindi</option>
+          <option value="gu">gu — Gujarati</option>
+          <option value="pa">pa — Panjabi</option>
+          <option value="bn">bn — Bengali</option>
+          <option value="mr">mr — Marathi</option>
+          <option value="ta">ta — Tamil</option>
+          <option value="te">te — Telugu</option>
+          <option value="kn">kn — Kannada</option>
+          <option value="ml">ml — Malayalam</option>
+          <option value="or">or — Odia</option>
+          <option value="ur">ur — Urdu</option>
+          <option value="zh">zh — Chinese</option>
+          <option value="ja">ja — Japanese</option>
+          <option value="ko">ko — Korean</option>
+          <option value="es">es — Spanish</option>
+          <option value="fr">fr — French</option>
+          <option value="de">de — German</option>
+          <option value="ar">ar — Arabic</option>
+        </select>
+      </label>
+      <label>Speed (0.25 – 3.0)
+        <input id="speed" type="number" min="0.25" max="3" step="0.05" value="1.00" />
+      </label>
+      <label>Concurrent streams
+        <input id="concurrent" type="number" min="1" max="32" value="5" />
+      </label>
+      <label title="Stagger between stream starts. e.g. 2s with N=5 → stream 1 fires at t=0, stream 2 at t=2s, stream 3 at t=4s …">Stream start delay (s)
+        <input id="streamDelay" type="number" min="0" max="60" step="0.1" value="0" />
+      </label>
+      <label>Play audio from stream #
+        <input id="playStream" type="number" min="1" value="1" />
+      </label>
+      <label>Use high-quality config
+        <select id="hq">
+          <option value="0" selected>no (faster)</option>
+          <option value="1">yes</option>
+        </select>
+      </label>
+      <label>&nbsp;</label>
+      <label class="text-row">Text (broadcast identically to every stream)
+        <textarea id="text" spellcheck="false"></textarea>
+      </label>
+    </div>
+    <div class="button-row">
+      <button id="start">▶  Start</button>
+      <button id="stop" class="secondary" disabled>■  Stop</button>
+      <button id="reset" class="secondary">Reset to sample</button>
+      <button id="loadFile" class="secondary">Reload sample_text.txt</button>
+      <span id="hintLine" class="hint" style="margin-left:auto;"></span>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- LIVE METRICS TABLE                                             -->
+  <!-- ============================================================== -->
+  <div class="panel">
+    <h2>Live metrics — first-chunk latency &amp; per-stream stats</h2>
+    <div class="status-bar">
+      <div><span class="label">Streams:</span> <span class="value"><span id="streamsDoneCount">0</span> / <span id="streamsTotalCount">0</span></span></div>
+      <div><span class="label">Wall:</span> <span class="value" id="wallTime">0 ms</span></div>
+      <div><span class="label">FCL min / median / max:</span> <span class="value" id="fclSummary">—</span></div>
+      <div id="globalStatus" class="badge idle">idle</div>
+    </div>
+    <div class="table-wrap">
+      <table class="metrics" id="metricsTable">
+        <thead><tr id="streamHeaders"><th class="metric-label">Metric</th></tr></thead>
+        <tbody id="metricsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- PER-CHUNK TIMELINE                                             -->
+  <!-- ============================================================== -->
+  <div class="panel">
+    <h2>Per-chunk timeline — every chunk, every stream</h2>
+    <div class="status-bar">
+      <div><span class="label">Filter stream:</span>
+        <select id="chunkFilter" style="background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;">
+          <option value="0" selected>all streams</option>
+        </select>
+      </div>
+      <div><span class="label">Rows:</span> <span class="value" id="chunkRowCount">0</span></div>
+      <div><span class="label">Avg gap (ms):</span> <span class="value" id="chunkAvgGap">—</span></div>
+      <button class="secondary" onclick="clearChunkLog()" style="margin-left:auto;">Clear timeline</button>
+    </div>
+    <div class="table-wrap" style="max-height:380px;overflow-y:auto;">
+      <table class="metrics" id="chunkTable">
+        <thead><tr>
+          <th class="metric-label" style="width:auto;text-align:left;">Time</th>
+          <th>Stream</th>
+          <th>Chunk #</th>
+          <th>Gen / wall (ms)</th>
+          <th>Since prev chunk (ms)</th>
+          <th>Since request (ms)</th>
+          <th>Audio (s)</th>
+          <th>Cumul. audio (s)</th>
+          <th class="metric-label" style="text-align:left;width:auto;">Text preview</th>
+        </tr></thead>
+        <tbody id="chunkBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- AUDIO STATUS                                                   -->
+  <!-- ============================================================== -->
+  <div class="panel">
+    <h2>Audio playback</h2>
+    <div id="audioCard" class="audio-card">
+      <div class="dot"></div>
+      <div id="audioLine">
+        Click <strong>Start</strong>. Audio chunks from the chosen stream
+        will be queued and played continuously.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- LIVE LOG                                                       -->
+  <!-- ============================================================== -->
+  <div class="panel">
+    <h2>Live log — every chunk, per stream</h2>
+    <div id="log" class="log"></div>
+    <div class="button-row">
+      <button class="secondary" onclick="document.getElementById('log').innerHTML=''">Clear log</button>
+      <span class="hint">Color-coded per stream. The chosen audio stream is also routed to the AudioContext.</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ====================================================================
+ * Embedded fallback corpus.  Same content as web_demo/sample_text.txt;
+ * used when fetch('./sample_text.txt') fails (e.g. file:// origin).
+ * ==================================================================== */
+const SAMPLE_TEXT = [
+  "ਕ੍ਰਿਸ਼ੀ ਪੰਜਾਬ ਦੀ ਆਤਮਾ ਹੈ। ਜਦੋਂ ਪਹਿਲਾ ਮੀਂਹ ਪੈਂਦਾ ਹੈ, ਤਾਂ ਧਰਤੀ ਆਪਣੀ ਤਰਸ ਬੁਝਾ ਕੇ ਹਰੀ-ਭਰੀ ਹੋ ਜਾਂਦੀ ਹੈ ਅਤੇ ਹਵਾ ਵਿੱਚ ਮਿੱਟੀ ਦੀ ਮਿੱਠੀ ਖੁਸ਼ਬੂ ਫੈਲ ਜਾਂਦੀ ਹੈ। ਕਿਸਾਨ ਕਪਾਹ, ਮੂੰਗਫਲੀ, ਗੰਧਮ, ਬਾਜਰਾ ਅਤੇ ਜਵਾਰ ਵਰਗੀਆਂ ਕਈ ਫਸਲਾਂ ਉਗਾਉਂਦੇ ਹਨ। ਹਰ ਇਕ ਫਸਲ ਪਿੱਛੇ ਸਾਲਾਂ ਦੀ ਮਿਹਨਤ, ਗਹਿਰੀ ਅਾਸਥਾ ਅਤੇ ਪਰਿਵਾਰ ਦਾ ਮਿਲ ਜੁਲ ਕੇ ਕੀਤਾ ਸੰਗਠਿਤ ਪੈਣਪ ਕਰ ਸਕਦਾ ਹੈ। ਜਦੋਂ ਫਸਲ ਲਣ ਲਈ ਤਿਆਰ ਹੁੰਦੀ ਹੈ, ਤਾਂ ਸਭ ਤੋਂ ਪਹਿਲਾਂ ਉਹ ਮੰਦਰ ਵਿੱਚ ਭੇਟ ਕੀਤੀ ਜਾਂਦੀ ਹੈ ਅਤੇ ਫਿਰ ਹੀ ਅਨਾਜ ਘਰ ਦੀ ਤਿਜ਼ੌਰੀ ਵਿੱਚ ਰੱਖਿਆ ਜਾਂਦਾ ਹੈ।",
+
+  "नमस्ते friends! पेश है प्राकृतिक मिठास का राजा — सीताफल, એટલે કે delicious Custard Apple! इसकी creamy texture, शानदार aroma और naturally sweet taste हर bite को खास बना देती है. જ્યારે તમે એકવાર સીતાફળનો સ્વાદ માણશો, ત્યારે તેની મીઠાશ તમને વારંવાર યાદ આવશે. Vitamins, fiber और natural energy से भरपूर सीताफल सिर्फ एक fruit नहीं, बल्कि पूरे family के लिए healthy lifestyle choice है. Kids हो, adults हो या elders — सबको इसका soft pulp और refreshing taste बहुत पसंद आता है. आज की busy life में हर कोई चाहता है कुछ tasty भी हो और healthy भी, और सीताफल दोनों का perfect combination है. यह energy boost करने में मदद करता है, digestion को support करता है और naturally fresh feeling देता है. ગુજરાતના તાજા ખેતરોમાંથી સીધું તમારા ઘર સુધી પહોંચતું આ fruit purity અને quality નો સાચો અનુભવ કરાવે છે. अगर आप ऐसा fruit ढूंढ रहे हैं जो premium, nutritious और authentic natural taste से भरपूर हो, तो सीताफल आपके लिए best choice है. Milkshakes, ice creams, desserts या smoothies — हर चीज़ में इसका flavor extra special बना देता है. તો હવે રાહ શા માટે? ઘરે લાવો કુદરતની મીઠાશ, માણો રાજાશાહી સ્વાદવાળું સીતાફળ અને દરેક bite સાથે health, happiness અને amazing taste નો આનંદ લો!",
+
+  "गुजरात के त्यौहार यहाँ के सामूहिक जीवन का हृदय हैं। नवरात्रि के नौ दिनों तक पूरा राज्य गरबा और डांडिया की ताल पर झूमता रहता है। युवक और युवतियाँ रंग-बिरंगे परिधान पहनकर माता की आरती में शामिल होते हैं, और रात भर ढोल-नगाड़ों की गूंज के साथ भक्ति और उल्लास का संगम महसूस होता है। उत्तरायण के दिन आकाश रंगीन पतंगों से भर जाता है, और बच्चों की 'काट्यो छे' की पुकार हर घर में गूंजती है। दिवाली पर हर घर के आँगन में रंगोली बनती है, और छोटे-छोटे दीयों की माला से गलियाँ चमक उठती हैं।",
+
+  "ગુજરાતી ભોજન પણ આપણા ગૌરવનો અતૂટ હિસ્સો છે. ઢોકળાં, ખાંડવી, થેપલાં, ફાફડા, જલેબી અને ઊંધિયું જેવી વાનગીઓ માત્ર સ્વાદની નહીં, પણ આત્મીયતાની નિશાની છે. ઘરમાં મહેમાન આવે ત્યારે પ્રથમ પાણી, પછી ગોળ-ઘી અને છેવટે ગરમ ચા આપવી — એ આપણી પરંપરા છે. કોઈ પણ વ્યક્તિ ભૂખ્યો આપણા ઘરેથી પાછો ન જાય, એ સંકલ્પ ગુજરાતી પરિવારોના હૃદયમાં વસ્યો છે. દરેક રાંધણ પાછળ માતાનો પ્રેમ, દાદીના આશીર્વાદ અને પેઢીઓની યાદો સમાયેલી છે. એટલે જ આપણા રસોડામાંથી નીકળતી સુગંધ માત્ર ભૂખ નહીં, પણ આત્માની તૃપ્તિ આપે છે.",
+
+  "গ্রামজীবনের প্রধান আকর্ষণ এখানকার সরলতা এবং নিষ্কপট স্নেহ। সন্ধ্যেবেলায় বয়োজ্যেষ্ঠেরা বারান্দায় বসে শিশুদের রামায়ণ, মহাভারত এবং নরসিংহ মেহেতার ভক্তিগাথা শোনান। মায়েরা চুলায় গরম রুটি, সবজি ও খিচুড়ি তৈরি করেন, আর ঘরের পরিবেশ ঘি ও মশলার সুবাসে ভরে ওঠে। গ্রামের স্কুলে শিক্ষকরা শুধু পুস্তকজ্ঞানই নয়, বরং সংস্কার, অহিংসা ও সত্যের গুরুত্বও শিখিয়ে দেন। প্রতিটি পাঠের সাথে গান্ধীজি ও সর্দার প্যাটেলের আদর্শ শিশুদের মনে গভীরে গেঁথে যায়।"
+].join("\n\n");
+
+/* ====================================================================
+ * Metric rows shown in the live table.
+ * ==================================================================== */
+const METRIC_ROWS = [
+  { id: 'status',         label: 'Status',                         html: true,  rowCls: 'row-status' },
+  { id: 'fcl_client',     label: 'FCL — client (ms)',              unit: ''  },
+  { id: 'fcl_server',     label: 'FCL — server (ms)',              unit: ''  },
+  { id: 'first_gen',      label: 'First-chunk gen (ms)',           unit: ''  },
+  { id: 'first_audio',    label: 'First-chunk audio (ms)',         unit: ''  },
+  { id: 'chunks',         label: 'Chunks received',                unit: ''  },
+  { id: 'audio_so_far',   label: 'Audio received so far (ms)',     unit: ''  },
+  { id: 'total_audio',    label: 'Total audio (ms)',               unit: ''  },
+  { id: 'server_wall',    label: 'Server wall (ms)',               unit: ''  },
+  { id: 'client_wall',    label: 'Client wall (ms)',               unit: ''  },
+  { id: 'rtf',            label: 'RTF (server_wall / audio)',      unit: ''  },
+];
+
+/* ====================================================================
+ * Globals
+ * ==================================================================== */
+let audioCtx       = null;
+let nextAudioStart = 0;
+let playStreamId   = 1;
+let activeSockets  = [];
+let pendingTimers  = [];   // setTimeout handles for staggered stream starts
+let streamStates   = {};   // { [id]: { tSend, chunks, audioMs, ws, fclClient } }
+let runStartedAt   = 0;
+let wallTimer      = null;
+let chunkRows      = [];   // per-chunk timeline records
+let chunkFilterId  = 0;    // 0 = all streams
+
+/* ====================================================================
+ * DOM helpers
+ * ==================================================================== */
+const $ = (id) => document.getElementById(id);
+const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+));
+
+function fmtNum(v) {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "number") return Number.isFinite(v) ? v.toLocaleString() : "—";
+  return v;
+}
+
+function buildTable(n) {
+  const headRow = $('streamHeaders');
+  const body    = $('metricsBody');
+  headRow.innerHTML = '<th class="metric-label">Metric</th>';
+  body.innerHTML    = '';
+
+  for (let i = 1; i <= n; i++) {
+    const th = document.createElement('th');
+    th.className = 'col-stream';
+    th.id = `header-stream-${i}`;
+    th.textContent = `Stream ${i}`;
+    headRow.appendChild(th);
+  }
+  highlightPlayingHeader();
+
+  for (const row of METRIC_ROWS) {
+    const tr = document.createElement('tr');
+    if (row.rowCls) tr.className = row.rowCls;
+    const th = document.createElement('th');
+    th.className = 'metric-label';
+    th.textContent = row.label;
+    tr.appendChild(th);
+    for (let i = 1; i <= n; i++) {
+      const td = document.createElement('td');
+      td.className = 'value pending';
+      td.id = `cell-${row.id}-${i}`;
+      if (row.id === 'status') {
+        td.innerHTML = '<span class="tag idle">idle</span>';
+      } else {
+        td.textContent = '—';
+      }
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+}
+
+function setCell(streamId, metricId, value, asHtml = false) {
+  const td = $(`cell-${metricId}-${streamId}`);
+  if (!td) return;
+  td.classList.remove('pending');
+  if (asHtml) td.innerHTML  = value;
+  else        td.textContent = (value === null || value === undefined) ? '—' : String(value);
+  td.classList.add('flash');
+  setTimeout(() => td.classList.remove('flash'), 600);
+}
+
+function setStatus(streamId, kind, label = null) {
+  const text = label || kind;
+  setCell(streamId, 'status', `<span class="tag ${kind}">${escapeHtml(text)}</span>`, true);
+}
+
+function highlightPlayingHeader() {
+  document.querySelectorAll('thead th.col-stream').forEach(el => el.classList.remove('is-playing'));
+  const el = $(`header-stream-${playStreamId}`);
+  if (el) el.classList.add('is-playing');
+}
+
+function setGlobalStatus(kind, label) {
+  const el = $('globalStatus');
+  el.className = `badge ${kind}`;
+  el.textContent = label || kind;
+}
+
+/* ====================================================================
+ * Per-chunk timeline
+ * ==================================================================== */
+function rebuildChunkFilter(maxStreams) {
+  const sel = $('chunkFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="0">all streams</option>';
+  for (let i = 1; i <= maxStreams; i++) {
+    const o = document.createElement('option');
+    o.value = String(i);
+    o.textContent = `Stream ${i}`;
+    sel.appendChild(o);
+  }
+  sel.value = cur && Number(cur) <= maxStreams ? cur : '0';
+  chunkFilterId = parseInt(sel.value, 10) || 0;
+}
+
+function clearChunkLog() {
+  chunkRows = [];
+  $('chunkBody').innerHTML = '';
+  $('chunkRowCount').textContent = '0';
+  $('chunkAvgGap').textContent = '—';
+}
+
+function fmt(v, dp = 0) {
+  if (v === null || v === undefined || v === '' || Number.isNaN(v)) return '—';
+  if (typeof v === 'number') return v.toFixed(dp);
+  return String(v);
+}
+
+function appendChunkRow(streamId, m) {
+  const ts = new Date().toLocaleTimeString('en-GB', { hour12: false }) + '.' +
+             String(performance.now() % 1000 | 0).padStart(3, '0');
+  const preview = (m.chunk_text || '').replace(/\s+/g, ' ').slice(0, 70);
+  const wall = (m.chunk_wall_ms !== undefined) ? m.chunk_wall_ms : m.chunk_gen_ms;
+  const audio_s = (m.chunk_audio_sec !== undefined)
+    ? m.chunk_audio_sec
+    : ((m.chunk_audio_ms ?? 0) / 1000);
+  const cum_s = (m.cumulative_audio_sec !== undefined)
+    ? m.cumulative_audio_sec
+    : null;
+  const sinceP = m.since_prev_chunk_ms;
+  const sinceR = m.since_request_ms;
+
+  chunkRows.push({ streamId, ts, idx: m.chunk_index, wall,
+                   sinceP, sinceR, audio_s, cum_s, preview });
+
+  if (chunkFilterId !== 0 && chunkFilterId !== streamId) {
+    refreshChunkSummary();
+    return;
+  }
+
+  const colorClass = `s${(streamId-1)%8 + 1}`;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="metric-label" style="text-align:left;color:var(--muted);font-family:ui-monospace,monospace;">${ts}</td>
+    <td><span class="${colorClass}" style="font-weight:700;">S${streamId}</span></td>
+    <td class="value">${m.chunk_index}</td>
+    <td class="value">${fmt(wall, 1)}</td>
+    <td class="value">${sinceP === null || sinceP === undefined ? '—' : fmt(sinceP, 1)}</td>
+    <td class="value">${fmt(sinceR, 1)}</td>
+    <td class="value">${fmt(audio_s, 3)}</td>
+    <td class="value">${cum_s === null ? '—' : fmt(cum_s, 3)}</td>
+    <td class="metric-label" style="text-align:left;font-family:ui-monospace,monospace;font-size:11.5px;color:var(--text);">${escapeHtml(preview)}${(m.chunk_text||'').length > 70 ? '…' : ''}</td>
+  `;
+  const body = $('chunkBody');
+  body.appendChild(tr);
+  // auto-scroll to bottom of the timeline
+  const wrap = body.parentElement.parentElement;
+  wrap.scrollTop = wrap.scrollHeight;
+  refreshChunkSummary();
+}
+
+function refreshChunkSummary() {
+  const visible = chunkFilterId === 0
+    ? chunkRows
+    : chunkRows.filter(r => r.streamId === chunkFilterId);
+  $('chunkRowCount').textContent = visible.length;
+  const gaps = visible
+    .map(r => r.sinceP)
+    .filter(v => typeof v === 'number' && v > 0);
+  if (!gaps.length) { $('chunkAvgGap').textContent = '—'; return; }
+  const avg = gaps.reduce((a,b)=>a+b,0) / gaps.length;
+  $('chunkAvgGap').textContent = avg.toFixed(0);
+}
+
+function rerenderChunkTable() {
+  const body = $('chunkBody');
+  body.innerHTML = '';
+  const visible = chunkFilterId === 0
+    ? chunkRows
+    : chunkRows.filter(r => r.streamId === chunkFilterId);
+  for (const r of visible) {
+    const colorClass = `s${(r.streamId-1)%8 + 1}`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="metric-label" style="text-align:left;color:var(--muted);font-family:ui-monospace,monospace;">${r.ts}</td>
+      <td><span class="${colorClass}" style="font-weight:700;">S${r.streamId}</span></td>
+      <td class="value">${r.idx}</td>
+      <td class="value">${fmt(r.wall, 1)}</td>
+      <td class="value">${r.sinceP === null || r.sinceP === undefined ? '—' : fmt(r.sinceP, 1)}</td>
+      <td class="value">${fmt(r.sinceR, 1)}</td>
+      <td class="value">${fmt(r.audio_s, 3)}</td>
+      <td class="value">${r.cum_s === null ? '—' : fmt(r.cum_s, 3)}</td>
+      <td class="metric-label" style="text-align:left;font-family:ui-monospace,monospace;font-size:11.5px;color:var(--text);">${escapeHtml(r.preview)}</td>
+    `;
+    body.appendChild(tr);
+  }
+  refreshChunkSummary();
+}
+
+/* ====================================================================
+ * Logging
+ * ==================================================================== */
+function log(streamId, kind, line) {
+  const logEl = $('log');
+  const ts = new Date().toLocaleTimeString('en-GB', { hour12: false }) + '.' +
+             String(performance.now() % 1000 | 0).padStart(3, '0');
+  const cls = streamId ? `s${(streamId-1)%8 + 1}` : 'send';
+  const tag = streamId ? `S${streamId}` : '··';
+  const safe = escapeHtml(line);
+  const klass = ({ ok: 'ok', err: 'err', send: 'send' })[kind] || cls;
+  const html = `<div class="line"><span class="ts">${ts}</span> ` +
+               `<span class="${cls}">${tag}</span>  ` +
+               `<span class="${klass}">${safe}</span></div>`;
+  logEl.insertAdjacentHTML('beforeend', html);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/* ====================================================================
+ * Audio playback (only for the chosen stream).
+ * Each delta is a complete WAV blob → decoded → scheduled back-to-back.
+ * ==================================================================== */
+function ensureAudioContext() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (nextAudioStart < audioCtx.currentTime) {
+    nextAudioStart = audioCtx.currentTime;
+  }
+}
+
+function setAudioCard(playing, message) {
+  const card = $('audioCard');
+  card.classList.toggle('playing', !!playing);
+  if (message) $('audioLine').innerHTML = message;
+}
+
+async function playWavBase64(b64) {
+  if (!audioCtx) return;
+  try {
+    const bin = atob(b64);
+    const buf = new ArrayBuffer(bin.length);
+    const u8  = new Uint8Array(buf);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const audioBuf = await audioCtx.decodeAudioData(buf);
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioBuf;
+    src.connect(audioCtx.destination);
+    const startAt = Math.max(audioCtx.currentTime + 0.005, nextAudioStart);
+    src.start(startAt);
+    nextAudioStart = startAt + audioBuf.duration;
+  } catch (e) {
+    log(0, 'err', `audio decode failed: ${e.message}`);
+  }
+}
+
+/* ====================================================================
+ * Stream runner
+ * ==================================================================== */
+function runStream(streamId, params, onComplete) {
+  const ws    = new WebSocket(params.url);
+  const state = {
+    tSend: 0, firstAt: 0, chunks: 0, audioMs: 0, ws,
+    fclClient: null, fclServer: null,
+  };
+  streamStates[streamId] = state;
+  activeSockets.push(ws);
+  setStatus(streamId, 'streaming', 'connecting');
+
+  ws.onopen = () => {
+    state.tSend = performance.now();
+    const msg = {
+      type:  'tts.request',
+      text:  params.text,
+      voice: params.voice,
+      speed: params.speed,
+    };
+    if (params.language && params.language !== 'auto') msg.language = params.language;
+    if (params.high_quality) msg.use_high_quality = true;
+    ws.send(JSON.stringify(msg));
+    setStatus(streamId, 'streaming', 'streaming');
+    log(streamId, 'send',
+        `→ tts.request  voice=${params.voice}  lang=${params.language}  ` +
+        `speed=${params.speed}  chars=${params.text.length}`);
+  };
+
+  ws.onmessage = (ev) => {
+    let m;
+    try { m = JSON.parse(ev.data); } catch { return; }
+
+    if (m.type === 'response.audio.delta') {
+      state.chunks++;
+      state.audioMs += (m.chunk_audio_ms || 0);
+
+      if (state.chunks === 1) {
+        state.firstAt   = performance.now();
+        state.fclClient = state.firstAt - state.tSend;
+        state.fclServer = m.first_chunk_latency_ms || 0;
+        setCell(streamId, 'fcl_client',  state.fclClient.toFixed(0));
+        setCell(streamId, 'fcl_server',  state.fclServer.toFixed(0));
+        setCell(streamId, 'first_gen',   (m.chunk_gen_ms ?? 0).toFixed(0));
+        setCell(streamId, 'first_audio', m.chunk_audio_ms ?? 0);
+        refreshFclSummary();
+      }
+      setCell(streamId, 'chunks',       `${state.chunks}`);
+      setCell(streamId, 'audio_so_far', state.audioMs);
+
+      // ── Per-chunk timeline row ─────────────────────────────────
+      appendChunkRow(streamId, m);
+
+      const preview = (m.chunk_text || '').replace(/\s+/g,' ').slice(0, 50);
+      const wallPart = m.chunk_wall_ms !== undefined ? `wall=${m.chunk_wall_ms.toFixed(0)}ms` : '';
+      const sinceP   = m.since_prev_chunk_ms;
+      const sincePart = (sinceP === null || sinceP === undefined)
+        ? '' : `  since_prev=${sinceP.toFixed(0)}ms`;
+      const audSec   = (m.chunk_audio_sec ?? ((m.chunk_audio_ms ?? 0)/1000)).toFixed(3);
+      log(streamId, 'chunk',
+        `chunk[${m.chunk_index}]  ${wallPart}${sincePart}  ` +
+        `audio=${audSec}s  text="${preview}${(m.chunk_text||'').length > 50 ? '…' : ''}"`);
+
+      if (streamId === playStreamId) playWavBase64(m.delta);
+    }
+    else if (m.type === 'response.audio.done') {
+      const wall = performance.now() - state.tSend;
+      setCell(streamId, 'total_audio', m.total_audio_ms ?? 0);
+      setCell(streamId, 'server_wall', (m.total_gen_ms ?? 0).toFixed(0));
+      setCell(streamId, 'client_wall', wall.toFixed(0));
+      const rtf = (m.total_audio_ms > 0)
+        ? (m.total_gen_ms / m.total_audio_ms).toFixed(3)
+        : '—';
+      setCell(streamId, 'rtf', rtf);
+      setStatus(streamId, 'done', 'done');
+      log(streamId, 'ok',
+        `done  chunks=${m.total_chunks}  audio=${m.total_audio_ms}ms  ` +
+        `server_wall=${(m.total_gen_ms ?? 0).toFixed(0)}ms  ` +
+        `client_wall=${wall.toFixed(0)}ms  rtf=${rtf}`);
+      try { ws.close(); } catch {}
+      onComplete(streamId, true);
+    }
+    else if (m.type === 'error') {
+      setStatus(streamId, 'error', 'error');
+      log(streamId, 'err', `server error: ${m.message}`);
+      try { ws.close(); } catch {}
+      onComplete(streamId, false);
+    }
+  };
+
+  ws.onerror = () => {
+    setStatus(streamId, 'error', 'conn error');
+    log(streamId, 'err', `WebSocket error`);
+  };
+
+  ws.onclose = (ev) => {
+    if (streamStates[streamId] && streamStates[streamId].chunks === 0
+        && !streamStates[streamId].closed) {
+      setStatus(streamId, 'error', 'closed (no data)');
+      log(streamId, 'err', `WebSocket closed (code=${ev.code})`);
+      onComplete(streamId, false);
+    }
+    streamStates[streamId].closed = true;
+  };
+}
+
+/* ====================================================================
+ * Run orchestrator
+ * ==================================================================== */
+function refreshFclSummary() {
+  const fcls = Object.values(streamStates)
+    .map(s => s.fclClient)
+    .filter(v => typeof v === 'number');
+  if (!fcls.length) { $('fclSummary').textContent = '—'; return; }
+  const sorted = [...fcls].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  const med = sorted[Math.floor(sorted.length / 2)];
+  $('fclSummary').textContent =
+    `${min.toFixed(0)} / ${med.toFixed(0)} / ${max.toFixed(0)} ms`;
+}
+
+function startWallTimer() {
+  if (wallTimer) clearInterval(wallTimer);
+  wallTimer = setInterval(() => {
+    const ms = performance.now() - runStartedAt;
+    $('wallTime').textContent = `${ms.toFixed(0)} ms`;
+  }, 100);
+}
+function stopWallTimer() {
+  if (wallTimer) { clearInterval(wallTimer); wallTimer = null; }
+}
+
+async function startRun() {
+  const url         = $('url').value.trim();
+  const voice       = $('voice').value.trim();
+  const language    = $('language').value;
+  const speed       = parseFloat($('speed').value) || 1.0;
+  const concurrent  = Math.max(1, parseInt($('concurrent').value, 10) || 1);
+  const streamDelay = Math.max(0, parseFloat($('streamDelay').value) || 0);
+  const text        = $('text').value;
+  const hq          = $('hq').value === '1';
+  playStreamId      = Math.min(concurrent, Math.max(1, parseInt($('playStream').value, 10) || 1));
+
+  if (!url || !text) {
+    alert('Server URL and text are required.');
+    return;
+  }
+  if (speed < 0.25 || speed > 3.0) {
+    alert('Speed must be between 0.25 and 3.0');
+    return;
+  }
+
+  ensureAudioContext();
+  setAudioCard(true, `Playing audio from <strong>Stream ${playStreamId}</strong> · `
+    + `voice=${escapeHtml(voice)}, lang=${escapeHtml(language)}, speed=${speed}.`);
+
+  $('start').disabled = true;
+  $('stop').disabled  = false;
+  const totalDelaySec = streamDelay * (concurrent - 1);
+  const launchLine = streamDelay > 0
+    ? `streaming · ${concurrent} streams · ${streamDelay}s gap (last fires @ ${totalDelaySec.toFixed(1)}s)`
+    : `streaming · ${concurrent} parallel`;
+  setGlobalStatus('streaming', launchLine);
+
+  streamStates  = {};
+  activeSockets = [];
+  pendingTimers = [];
+  buildTable(concurrent);
+  rebuildChunkFilter(concurrent);
+  clearChunkLog();
+  $('streamsTotalCount').textContent = concurrent;
+  $('streamsDoneCount').textContent  = '0';
+  $('fclSummary').textContent        = '—';
+  runStartedAt = performance.now();
+  startWallTimer();
+
+  log(0, 'send',
+      `── Run start  N=${concurrent}  delay=${streamDelay}s  voice=${voice}  ` +
+      `lang=${language}  speed=${speed}  chars=${text.length}  url=${url}  ` +
+      `play=stream${playStreamId} ──`);
+
+  let doneCount = 0;
+  const params  = { url, voice, language, speed, text, high_quality: hq };
+  const onComplete = () => {
+    doneCount++;
+    $('streamsDoneCount').textContent = doneCount;
+    if (doneCount >= concurrent) {
+      stopWallTimer();
+      const wall = performance.now() - runStartedAt;
+      $('wallTime').textContent = `${wall.toFixed(0)} ms`;
+      const okCount = Object.values(streamStates)
+        .filter(s => s.chunks > 0 && s.closed).length;
+      setGlobalStatus(okCount === concurrent ? 'done' : 'error',
+        `done · ${okCount}/${concurrent} ok`);
+      $('start').disabled = false;
+      $('stop').disabled  = true;
+      setAudioCard(false, `Run finished. ${okCount}/${concurrent} streams ok.`);
+      log(0, 'ok',
+        `── Run end   wall=${wall.toFixed(0)}ms  ok=${okCount}/${concurrent} ──`);
+    }
+  };
+
+  // Pre-mark every stream that won't fire immediately as "scheduled".
+  for (let i = 1; i <= concurrent; i++) {
+    const delaySec = streamDelay * (i - 1);
+    if (delaySec === 0) {
+      runStream(i, params, onComplete);
+    } else {
+      setStatus(i, 'idle', `wait +${delaySec.toFixed(1)}s`);
+      const timer = setTimeout(() => {
+        // skip if the run was stopped before our turn
+        if ($('start').disabled === false) return;
+        log(i, 'send', `→ scheduled launch (delay=${delaySec.toFixed(1)}s elapsed)`);
+        runStream(i, params, onComplete);
+      }, delaySec * 1000);
+      pendingTimers.push(timer);
+    }
+  }
+}
+
+function stopRun() {
+  log(0, 'err', '── User stop requested ──');
+  // cancel any not-yet-fired streams
+  for (const t of pendingTimers) clearTimeout(t);
+  pendingTimers = [];
+  for (const ws of activeSockets) {
+    try { ws.close(1000, 'user stop'); } catch {}
+  }
+  activeSockets = [];
+  setGlobalStatus('error', 'stopped');
+  $('start').disabled = false;
+  $('stop').disabled  = true;
+  stopWallTimer();
+  setAudioCard(false, 'Stopped by user.');
+}
+
+/* ====================================================================
+ * Sample-text loading
+ * ==================================================================== */
+async function loadSampleFile() {
+  $('hintLine').textContent = 'loading sample_text.txt …';
+  try {
+    const r = await fetch('./sample_text.txt', { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const txt = await r.text();
+    $('text').value = txt.trim();
+    $('hintLine').textContent = `Loaded sample_text.txt · ${txt.length} chars`;
+  } catch (e) {
+    $('hintLine').textContent =
+      `Could not fetch sample_text.txt (${e.message}). Use "Reset to sample".`;
+    log(0, 'err', `Falling back to embedded sample text: ${e.message}`);
+  }
+}
+
+/* ====================================================================
+ * Boot
+ * ==================================================================== */
+window.addEventListener('DOMContentLoaded', () => {
+  $('text').value = SAMPLE_TEXT;
+  buildTable(parseInt($('concurrent').value, 10) || 3);
+  loadSampleFile();   // overlay with the file content if reachable
+
+  $('start').addEventListener('click', startRun);
+  $('stop').addEventListener('click', stopRun);
+  $('reset').addEventListener('click', () => { $('text').value = SAMPLE_TEXT; });
+  $('loadFile').addEventListener('click', loadSampleFile);
+  $('concurrent').addEventListener('change', () => {
+    const n = Math.max(1, parseInt($('concurrent').value, 10) || 1);
+    if ($('start').disabled === false) buildTable(n);
+  });
+  $('playStream').addEventListener('change', () => {
+    const n = parseInt($('concurrent').value, 10) || 1;
+    playStreamId = Math.min(n, Math.max(1, parseInt($('playStream').value, 10) || 1));
+    highlightPlayingHeader();
+  });
+  $('chunkFilter').addEventListener('change', () => {
+    chunkFilterId = parseInt($('chunkFilter').value, 10) || 0;
+    rerenderChunkTable();
+  });
+  rebuildChunkFilter(parseInt($('concurrent').value, 10) || 3);
+});
+</script>
+</body>
+</html>

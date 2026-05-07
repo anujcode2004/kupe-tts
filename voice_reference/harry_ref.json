@@ -1,0 +1,16 @@
+{
+  "name": "harry",
+  "ref_text": "Listen up, crew. Danger will be everywhere. The sights we will see, the obstacles obstacled, the dangers dangerered. It will be glorious, stupendous.",
+  "ref_audio": "harry_ref.mp3",
+  "language": "en",
+  "embedding_path": "harry_embedding.npz",
+  "embedding_meta": {
+    "model_id": "k2-fsa/OmniVoice",
+    "sampling_rate": 24000,
+    "num_codebooks": 8,
+    "num_tokens": 290,
+    "ref_rms": 0.102981,
+    "built_at": "2026-05-07T15:20:58.134863+00:00"
+  },
+  "created_at": "2026-05-04T10:39:45.202057+00:00"
+}

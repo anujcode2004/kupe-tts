@@ -1,0 +1,16 @@
+{
+  "name": "monika",
+  "ref_text": "This is the most expressive Indian AI voice you can find here. Let's make some magic, shall we?",
+  "ref_audio": "monika_ref.mp3",
+  "language": "en",
+  "embedding_path": "monika_embedding.npz",
+  "embedding_meta": {
+    "model_id": "k2-fsa/OmniVoice",
+    "sampling_rate": 24000,
+    "num_codebooks": 8,
+    "num_tokens": 135,
+    "ref_rms": 0.034348,
+    "built_at": "2026-05-07T15:20:58.135707+00:00"
+  },
+  "created_at": "2026-05-04T10:39:45.202057+00:00"
+}
