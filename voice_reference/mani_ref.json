@@ -1,0 +1,16 @@
+{
+  "name": "mani",
+  "ref_text": "यह संसार एक विचित्र पहेली है। यहाँ झरने गाते हैं, पत्थर चुप रहते हैं, और आकाश कभी नहीं थकता। वृत्त, त्रिकोण, और श्रृंखलाएँ — ये सब ज्ञान के प्रतीक हैं। जीवन में क्षमा और करुणा सबसे बड़ा धर्म है। प्रत्येक क्षण अनमोल है — इसे व्यर्थ मत जाने दो। The rhythm of language is rarely straightforward. February's chill, rural dialects, and the peculiar pronunciation of 'worcestershire' challenge even the sharpest algorithms. Speech carries texture — whispered urgency, thunderous authority, and the quiet warmth of a grandmother's lullaby. Every voice holds a universe worth learning. Aaj ka weather देख कर lagta hai ki nature ने exactly वही किया jo scientists ने predict किया था। Technology और परम्परा का यह unique blend हमारी आवाज़ में clearly झलकता है — bilkul naturally।",
+  "ref_audio": "mani_ref.wav",
+  "language": "hi",
+  "embedding_path": "mani_embedding.npz",
+  "embedding_meta": {
+    "model_id": "k2-fsa/OmniVoice",
+    "sampling_rate": 24000,
+    "num_codebooks": 8,
+    "num_tokens": 288,
+    "ref_rms": 0.125988,
+    "built_at": "2026-05-07T11:59:57.420601+00:00"
+  },
+  "created_at": "2026-05-04T10:39:45.202057+00:00"
+}
